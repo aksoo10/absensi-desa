@@ -1,0 +1,10 @@
+{
+  "buildCommand": "cd my-react-app/frontend && npm install && npm run build",
+  "outputDirectory": "my-react-app/frontend/dist",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}

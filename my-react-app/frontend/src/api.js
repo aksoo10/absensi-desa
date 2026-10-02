@@ -1,4 +1,6 @@
-const API_BASE = '/api';
+const BACKEND_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+const API_BASE = `${BACKEND_BASE}/api`;
+export const UPLOAD_BASE = `${BACKEND_BASE}/uploads`;
 
 export async function apiRequest(endpoint, options = {}) {
   const token = localStorage.getItem('presensi_token');

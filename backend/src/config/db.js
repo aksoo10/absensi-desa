@@ -10,10 +10,17 @@ async function initDB() {
   const port = process.env.DB_PORT || 3306;
   const database = process.env.DB_NAME || 'absensi_db';
 
-  // 1. Connect without database to ensure database exists
-  const rootConn = await mysql.createConnection({ host, user, password, port });
-  await rootConn.query(`CREATE DATABASE IF NOT EXISTS \`${database}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;`);
-  await rootConn.end();
+  const ssl = (process.env.DB_SSL === 'true' || process.env.DB_SSL === '1') ? { rejectUnauthorized: false } : undefined;
+
+  // 1. Connect without database to ensure database exists (primarily for local Laragon/XAMPP)
+  try {
+    const rootConn = await mysql.createConnection({ host, user, password, port, ssl });
+    await rootConn.query(`CREATE DATABASE IF NOT EXISTS \`${database}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;`);
+    await rootConn.end();
+  } catch (err) {
+    // On cloud databases (TiDB, Aiven, Railway, etc.), CREATE DATABASE may be disallowed or DB already exists
+    console.warn('Note on DB initialization (safe to ignore if on cloud DB):', err.message);
+  }
 
   // 2. Create pool connected to the database
   pool = mysql.createPool({
@@ -22,6 +29,7 @@ async function initDB() {
     password,
     port,
     database,
+    ssl,
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0,

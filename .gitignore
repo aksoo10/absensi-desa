@@ -1,0 +1,11 @@
+node_modules/
+.env
+.env.local
+.DS_Store
+dist/
+build/
+backend/node_modules/
+backend/uploads/*
+!backend/uploads/.gitkeep
+my-react-app/frontend/node_modules/
+my-react-app/frontend/dist/

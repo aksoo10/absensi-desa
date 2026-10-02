@@ -86,17 +86,46 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
-// Start server
-async function startServer() {
-  try {
-    await initDB();
-    app.listen(PORT, () => {
-      console.log(`Backend server running smoothly on http://localhost:${PORT}`);
+// Database initialization promise
+let dbInitPromise = null;
+function ensureDB() {
+  if (!dbInitPromise) {
+    dbInitPromise = initDB().catch((err) => {
+      console.error('Database connection error:', err.message);
+      dbInitPromise = null; // allow retry on next request
+      throw err;
     });
-  } catch (error) {
-    console.error('Failed to start server:', error);
-    process.exit(1);
   }
+  return dbInitPromise;
 }
 
-startServer();
+// Middleware to ensure DB is connected before handling /api routes
+app.use('/api', async (req, res, next) => {
+  try {
+    await ensureDB();
+    next();
+  } catch (err) {
+    res.status(503).json({
+      status: 'error',
+      message: 'Database service unavailable. Silakan periksa koneksi database Anda (DB_HOST, DB_USER, dll).',
+      error: err.message
+    });
+  }
+});
+
+// Start server locally (when not running in serverless / Vercel environment)
+if (!process.env.VERCEL) {
+  ensureDB()
+    .then(() => {
+      app.listen(PORT, () => {
+        console.log(`Backend server running smoothly on http://localhost:${PORT}`);
+      });
+    })
+    .catch((error) => {
+      console.error('Failed to connect to database on startup:', error.message);
+      console.log(`Starting server anyway on http://localhost:${PORT} (API requests will return 503 until DB is reachable)`);
+      app.listen(PORT);
+    });
+}
+
+module.exports = app;
