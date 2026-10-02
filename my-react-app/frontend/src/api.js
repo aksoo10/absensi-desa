@@ -1,3 +1,5 @@
+import { handleMockRequest } from './mockData';
+
 const BACKEND_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
 const API_BASE = `${BACKEND_BASE}/api`;
 export const UPLOAD_BASE = `${BACKEND_BASE}/uploads`;
@@ -17,18 +19,40 @@ export async function apiRequest(endpoint, options = {}) {
     headers['Content-Type'] = 'application/json';
   }
 
-  const response = await fetch(`${API_BASE}${endpoint}`, {
-    ...options,
-    headers,
-  });
+  try {
+    const response = await fetch(`${API_BASE}${endpoint}`, {
+      ...options,
+      headers,
+    });
 
-  const data = await response.json().catch(() => ({}));
+    // If backend returns 404, 502, 503 (e.g. backend not deployed on Vercel or temporarily offline)
+    if (response.status === 404 || response.status === 502 || response.status === 503) {
+      const mockResult = handleMockRequest(endpoint, options);
+      if (mockResult !== null) {
+        return mockResult;
+      }
+    }
 
-  if (!response.ok) {
-    throw new Error(data.message || `Request failed with status ${response.status}`);
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      // If error message indicates 404 or backend down
+      const mockResult = handleMockRequest(endpoint, options);
+      if (mockResult !== null) {
+        return mockResult;
+      }
+      throw new Error(data.message || `Request failed with status ${response.status}`);
+    }
+
+    return data;
+  } catch (err) {
+    // If network error (offline, backend unreachable, CORS, etc.)
+    const mockResult = handleMockRequest(endpoint, options);
+    if (mockResult !== null) {
+      return mockResult;
+    }
+    throw err;
   }
-
-  return data;
 }
 
 export const authApi = {
